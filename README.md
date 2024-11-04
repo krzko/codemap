@@ -1,6 +1,3 @@
-Here's the updated README.md that reflects the new CLI structure:
-
-```markdown
 # codemap
 
 `codemap` is a tool that helps annotate code files with structural information to provide better context for LLMs (Large Language Models). It adds a single line of metadata at the top of each file containing the file path, package name and language information.
