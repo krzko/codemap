@@ -17,6 +17,8 @@ type Options struct {
 	MaxWorkers int
 	// SupportedTypes lists the file extensions to process
 	SupportedTypes []string
+	// Verbose enables detailed logging
+	Verbose bool
 }
 
 func DefaultOptions() Options {
@@ -48,8 +50,18 @@ func DefaultOptions() Options {
 			"*.sum",
 			"*.mod",
 		},
-		Concurrent:     true,
-		MaxWorkers:     4,
-		SupportedTypes: []string{".go", ".py", ".js", ".jsx", ".ts", ".tsx"},
+		Concurrent: true,
+		MaxWorkers: 4,
+		SupportedTypes: []string{
+			".go",
+			".py",
+			".js",
+			".jsx",
+			".ts",
+			".tsx",
+			".dockerfile",
+			"",
+		},
+		Verbose: false,
 	}
 }
