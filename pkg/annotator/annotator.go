@@ -23,12 +23,14 @@ type DefaultAnnotator struct {
 func New() Annotator {
 	return &DefaultAnnotator{
 		languages: map[string]languages.Language{
-			".go":  &languages.GoLang{},
-			".py":  &languages.Python{},
-			".js":  &languages.JavaScript{},
-			".jsx": &languages.JavaScript{},
-			".ts":  &languages.JavaScript{},
-			".tsx": &languages.JavaScript{},
+			".go":         &languages.GoLang{},
+			".py":         &languages.Python{},
+			".js":         &languages.JavaScript{},
+			".jsx":        &languages.JavaScript{},
+			".ts":         &languages.JavaScript{},
+			".tsx":        &languages.JavaScript{},
+			".dockerfile": &languages.Dockerfile{},
+			"":            &languages.Dockerfile{},
 		},
 	}
 }
@@ -46,7 +48,7 @@ func (a *DefaultAnnotator) AddAnnotation(info FileInfo) error {
 	}
 
 	// Check if annotation already exists
-	if a.hasAnnotation(string(content), lang) {
+	if a.hasAnnotationWithLang(string(content), lang) {
 		relPath, err := filepath.Rel(".", info.Path)
 		if err != nil {
 			relPath = info.Path
@@ -88,7 +90,7 @@ func (a *DefaultAnnotator) RemoveAnnotation(path string) error {
 		return err
 	}
 
-	if !a.hasAnnotation(string(content), lang) {
+	if !a.hasAnnotationWithLang(string(content), lang) {
 		relPath, err := filepath.Rel(".", path)
 		if err != nil {
 			relPath = path
@@ -140,7 +142,19 @@ func (a *DefaultAnnotator) createAnnotation(lang languages.Language, info FileIn
 		info.Language)
 }
 
-func (a *DefaultAnnotator) hasAnnotation(content string, lang languages.Language) bool {
+// HasAnnotation checks if a file has a codemap annotation
+func (a *DefaultAnnotator) HasAnnotation(content string) bool {
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	// Only check the first line
+	if !scanner.Scan() {
+		return false
+	}
+	firstLine := scanner.Text()
+	return strings.Contains(firstLine, annotationPattern)
+}
+
+// hasAnnotationWithLang is an internal helper that checks for language-specific annotation
+func (a *DefaultAnnotator) hasAnnotationWithLang(content string, lang languages.Language) bool {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	// Only check the first line
 	if !scanner.Scan() {

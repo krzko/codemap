@@ -1,3 +1,6 @@
+Here's the updated README.md that reflects the new CLI structure:
+
+```markdown
 # codemap
 
 `codemap` is a tool that helps annotate code files with structural information to provide better context for LLMs (Large Language Models). It adds a single line of metadata at the top of each file containing the file path, package name and language information.
@@ -19,37 +22,71 @@ make build
 Or use docker:
 
 ```bash
-docker run -v $(pwd):/app krzko/codemap
+docker run -v $(pwd):/app ghcr.io/krzko/codemap apply --dry-run
 ```
 
-## Usage
+## Commands
 
-Basic usage:
+### Apply Annotations
+
 ```bash
-# Process files in current directory
-codemap
+# Add annotations to files in current directory
+codemap apply
 
-# Process files in a specific directory
-codemap -dir=/path/to/your/project
+# Add annotations with dry-run (show what would change)
+codemap apply --dry-run
 
-# Remove annotations
-codemap -clean
+# Add annotations to specific directory
+codemap apply -d /path/to/project
 
-# Enable verbose logging
-codemap -verbose
+# Add annotations with verbose output
+codemap apply -V
 ```
 
-### Command Line Options
+### Clean Annotations
 
-- `-dir`: Directory to process (default: current directory)
-- `-clean`: Remove existing annotations
-- `-verbose`: Enable verbose logging
-- `-types`: Comma-separated list of file extensions to process (default: "go,py,js,jsx,ts,tsx")
-- `-version`: Print version information
+```bash
+# Remove annotations from files in current directory
+codemap clean
 
-### Example
+# Remove annotations with dry-run
+codemap clean --dry-run
 
-Processing a file will add a single line annotation at the top:
+# Clean specific directory
+codemap clean -d /path/to/project
+```
+
+### List Files
+
+```bash
+# List files that would be processed
+codemap list
+# or
+codemap ls
+
+# List files in specific directory
+codemap list -d /path/to/project
+```
+
+### Show Statistics
+
+```bash
+# Show annotation statistics for current directory
+codemap stats
+
+# Show stats for specific directory
+codemap stats -d /path/to/project
+```
+
+### Common Options
+
+All commands support these options:
+- `-d, --dir`: Directory to process (default: current directory)
+- `-t, --types`: Comma-separated list of file extensions (default: "go,py,js,jsx,ts,tsx")
+- `-V, --verbose`: Enable verbose logging
+- `-v, --version`: Display version information
+
+### Example Annotation
 
 Before:
 ```go
@@ -80,6 +117,7 @@ func main() {
 - Python (.py)
 - JavaScript (.js, .jsx)
 - TypeScript (.ts, .tsx)
+- Dockerfile
 
 ### Default Exclusions
 
@@ -112,21 +150,21 @@ Files:
 ## Examples
 
 ```bash
-# Process all supported files in current directory
-codemap
+# Add annotations with dry-run
+codemap apply --dry-run
 
-# Process only Go files in current directory
-codemap -types=go
+# Process only Go files
+codemap apply -t go
 
-# Process Python and JavaScript files in a specific directory
-codemap -dir=/path/to/project -types=py,js
+# Clean TypeScript files with dry-run
+codemap clean -t ts,tsx --dry-run
 
-# Clean annotations from all files in current directory
-codemap -clean
+# List all Python and JavaScript files
+codemap list -t py,js
 
-# Clean annotations from TypeScript files
-codemap -clean -types=ts,tsx
+# Show stats for Go files
+codemap stats -t go
 
-# Process all supported files with verbose logging
-codemap -verbose
+# Process all files with verbose output
+codemap apply -V
 ```

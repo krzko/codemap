@@ -18,6 +18,13 @@ type Processor struct {
 	walker    *walker.Walker
 }
 
+type Stats struct {
+	TotalFiles       int
+	AnnotatedFiles   int
+	UnannotatedFiles int
+	FilesByLanguage  map[string]int
+}
+
 // New creates a new Processor instance
 func New(opts Options) (*Processor, error) {
 	w, err := walker.New(
@@ -36,14 +43,93 @@ func New(opts Options) (*Processor, error) {
 	}, nil
 }
 
-// Process handles the file processing
-func (p *Processor) Process() error {
-	files, err := p.walker.Walk()
+// Clean removes annotations from files
+func (p *Processor) Clean() error {
+	files, err := p.ListFiles()
 	if err != nil {
-		return fmt.Errorf("failed to walk directory: %w", err)
+		return err
 	}
 
-	log.Printf("Found %d files to process", len(files))
+	log.Printf("Found %d total files", len(files))
+
+	supportedCount := 0
+	for _, file := range files {
+		// Skip unsupported files
+		if !p.isSupported(file) {
+			if p.opts.Verbose {
+				log.Printf("Skipping unsupported file: %s", file)
+			}
+			continue
+		}
+
+		if err := p.annotator.RemoveAnnotation(file); err != nil {
+			if p.opts.Verbose {
+				log.Printf("Error cleaning %s: %v", file, err)
+			}
+			continue
+		}
+		supportedCount++
+	}
+
+	log.Printf("Successfully processed %d supported files", supportedCount)
+	return nil
+}
+
+// GetStats returns statistics about the files
+func (p *Processor) GetStats() (*Stats, error) {
+	files, err := p.ListFiles()
+	if err != nil {
+		return nil, err
+	}
+
+	stats := &Stats{
+		TotalFiles:      len(files),
+		FilesByLanguage: make(map[string]int),
+	}
+
+	for _, file := range files {
+		ext := filepath.Ext(file)
+		stats.FilesByLanguage[ext]++
+
+		content, err := os.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+
+		if p.annotator.HasAnnotation(string(content)) {
+			stats.AnnotatedFiles++
+		} else {
+			stats.UnannotatedFiles++
+		}
+	}
+
+	return stats, nil
+}
+
+// ListFiles returns a list of files that would be processed
+func (p *Processor) ListFiles() ([]string, error) {
+	return p.walker.Walk()
+}
+
+// Process handles the file processing
+func (p *Processor) Process() error {
+	files, err := p.ListFiles()
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Found %d total files", len(files))
+
+	supportedFiles := []string{}
+	for _, file := range files {
+		if p.isSupported(file) {
+			supportedFiles = append(supportedFiles, file)
+		} else if p.opts.Verbose {
+			log.Printf("Skipping unsupported file: %s", file)
+		}
+	}
+
+	log.Printf("Found %d supported files", len(supportedFiles))
 
 	if p.opts.Clean {
 		log.Printf("Running in clean mode - removing annotations")
@@ -53,11 +139,11 @@ func (p *Processor) Process() error {
 
 	if p.opts.Concurrent {
 		log.Printf("Processing files concurrently with %d workers", p.opts.MaxWorkers)
-		return p.processConcurrent(files)
+		return p.processConcurrent(supportedFiles)
 	}
 
 	log.Printf("Processing files sequentially")
-	return p.processSequential(files)
+	return p.processSequential(supportedFiles)
 }
 
 func (p *Processor) processConcurrent(files []string) error {
@@ -133,8 +219,11 @@ func (p *Processor) processFile(path string) error {
 	return nil
 }
 
-// Add the missing methods
 func (p *Processor) determineLanguage(path string) string {
+	if filepath.Base(path) == "Dockerfile" {
+		return "Dockerfile"
+	}
+
 	ext := filepath.Ext(path)
 	switch ext {
 	case ".go":
@@ -145,6 +234,8 @@ func (p *Processor) determineLanguage(path string) string {
 		return "JavaScript"
 	case ".ts", ".tsx":
 		return "TypeScript"
+	case ".dockerfile":
+		return "Dockerfile"
 	default:
 		return "Unknown"
 	}
@@ -177,6 +268,11 @@ func (p *Processor) determinePackageName(path string) string {
 	// For Go files, read the package name from the file
 	if filepath.Ext(path) == ".go" {
 		return p.readGoPackageName(path)
+	}
+
+	// For Dockerfile, use "docker" as package name
+	if filepath.Base(path) == "Dockerfile" || filepath.Ext(path) == ".dockerfile" {
+		return "docker"
 	}
 
 	// For other files, use the directory name as package name
